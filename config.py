@@ -9,7 +9,7 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 # --- Qdrant ---
-QDRANT_HOST = "localhost"
+QDRANT_HOST = os.getenv("QDRANT_HOST", "127.0.0.1")  # 127.0.0.1 (IPv4) tránh lỗi IPv6 ::1 trên Windows+Docker
 QDRANT_PORT = 6333
 COLLECTION_NAME = "lab18_production"
 NAIVE_COLLECTION = "lab18_naive"

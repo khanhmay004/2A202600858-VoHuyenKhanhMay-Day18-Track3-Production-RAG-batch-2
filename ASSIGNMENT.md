@@ -56,9 +56,9 @@ Implement 3 strategies, so sánh với basic baseline:
 | Structure-Aware | `chunk_structure_aware()` | Parse markdown headers → chunk theo section |
 
 **Pass criteria:**
-- [ ] Semantic: `list[Chunk]` không rỗng
-- [ ] Hierarchical: children có `parent_id` hợp lệ, nhỏ hơn parents
-- [ ] Structure-Aware: giữ headers, có `section` trong metadata
+- [x] Semantic: `list[Chunk]` không rỗng
+- [x] Hierarchical: children có `parent_id` hợp lệ, nhỏ hơn parents
+- [x] Structure-Aware: giữ headers, có `section` trong metadata
 
 ---
 
@@ -74,9 +74,9 @@ Implement 3 strategies, so sánh với basic baseline:
 | RRF | `reciprocal_rank_fusion()` | score(d) = Σ 1/(k + rank + 1) |
 
 **Pass criteria:**
-- [ ] BM25 search trả về results với `method="bm25"`
-- [ ] RRF merge → results với `method="hybrid"`
-- [ ] Query "nghỉ phép" → kết quả liên quan
+- [x] BM25 search trả về results với `method="bm25"`
+- [x] RRF merge → results với `method="hybrid"`
+- [x] Query "nghỉ phép" → kết quả liên quan
 
 ---
 
@@ -89,9 +89,9 @@ Implement 3 strategies, so sánh với basic baseline:
 | Cross-encoder | `CrossEncoderReranker._load_model()` + `.rerank()` | bge-reranker-v2-m3 via `sentence_transformers.CrossEncoder` |
 
 **Pass criteria:**
-- [ ] Rerank 5 docs → trả về ≤ 3 `RerankResult`
-- [ ] Sorted by `rerank_score` descending
-- [ ] Doc "nghỉ phép" ranked cao hơn "VPN"
+- [x] Rerank 5 docs → trả về ≤ 3 `RerankResult`
+- [x] Sorted by `rerank_score` descending
+- [x] Doc "nghỉ phép" ranked cao hơn "VPN"
 
 ---
 
@@ -105,8 +105,8 @@ Implement 3 strategies, so sánh với basic baseline:
 | Failure analysis | `failure_analysis()` | Bottom-N, Diagnostic Tree mapping |
 
 **Pass criteria:**
-- [ ] `evaluate_ragas()` trả về dict với 4 metric keys
-- [ ] `failure_analysis()` trả về list với `diagnosis` + `suggested_fix`
+- [x] `evaluate_ragas()` trả về dict với 4 metric keys
+- [x] `failure_analysis()` trả về list với `diagnosis` + `suggested_fix`
 
 ---
 
@@ -122,9 +122,9 @@ Implement 3 strategies, so sánh với basic baseline:
 | Riêng lẻ (để học) | 4 hàm riêng | 4 calls/chunk | `summarize_chunk()`, `generate_hypothesis_questions()`, `contextual_prepend()`, `extract_metadata()` |
 
 **Pass criteria:**
-- [ ] `enrich_chunks()` trả về `list[EnrichedChunk]`
-- [ ] `enriched_text` khác `original_text` (nếu có API key)
-- [ ] Fallback hoạt động khi không có API key
+- [x] `enrich_chunks()` trả về `list[EnrichedChunk]`
+- [x] `enriched_text` khác `original_text` (nếu có API key)
+- [x] Fallback hoạt động khi không có API key
 
 ---
 

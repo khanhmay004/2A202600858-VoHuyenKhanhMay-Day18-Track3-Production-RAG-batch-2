@@ -25,11 +25,15 @@ def build_pipeline():
     print("\n[1/4] Chunking documents...", flush=True)
     docs = load_documents()
     all_chunks = []
-    for doc in docs:
+    parent_map = {}
+    for di, doc in enumerate(docs):
         parents, children = chunk_hierarchical(doc["text"], metadata=doc["metadata"])
+        for p in parents:
+            parent_map[f"{di}:{p.metadata['parent_id']}"] = p.text  # parent_id duy nhất toàn cục (theo doc)
         for child in children:
-            all_chunks.append({"text": child.text, "metadata": {**child.metadata, "parent_id": child.parent_id}})
-    print(f"  ✓ {len(all_chunks)} chunks from {len(docs)} documents ({time.time()-t0:.1f}s)", flush=True)
+            gid = f"{di}:{child.parent_id}"
+            all_chunks.append({"text": child.text, "metadata": {**child.metadata, "parent_id": gid}})
+    print(f"  ✓ {len(all_chunks)} child chunks / {len(parent_map)} parents from {len(docs)} documents ({time.time()-t0:.1f}s)", flush=True)
 
     # Step 2: Enrichment (M5)
     t0 = time.time()
@@ -54,6 +58,7 @@ def build_pipeline():
     reranker = CrossEncoderReranker()
     print(f"  ✓ Reranker ready ({time.time()-t0:.1f}s)", flush=True)
 
+    search.parent_map = parent_map  # để run_query map child → parent (small-to-big)
     return search, reranker
 
 
@@ -61,19 +66,42 @@ def run_query(query: str, search: HybridSearch, reranker: CrossEncoderReranker) 
     """Run single query through pipeline."""
     results = search.search(query)
     docs = [{"text": r.text, "score": r.score, "metadata": r.metadata} for r in results]
-    reranked = reranker.rerank(query, docs, top_k=RERANK_TOP_K)
-    contexts = [r.text for r in reranked] if reranked else [r.text for r in results[:3]]
+    reranked = reranker.rerank(query, docs, top_k=8)  # rerank pool rộng để tìm nhiều parent khác nhau
+    picked = reranked if reranked else results[:8]
+
+    # Small-to-big: map child đã rerank → PARENT chunk (full context), dedup, cap RERANK_TOP_K parent.
+    parent_map = getattr(search, "parent_map", None)
+    contexts, seen = [], set()
+    for r in picked:
+        pid = (r.metadata or {}).get("parent_id")
+        ctx = parent_map.get(pid) if (parent_map and pid in parent_map) else r.text
+        if ctx and ctx not in seen:
+            seen.add(ctx)
+            contexts.append(ctx)
+        if len(contexts) >= RERANK_TOP_K:
+            break
+    if not contexts:
+        contexts = [r.text for r in results[:3]]
 
     from config import OPENAI_API_KEY
     if OPENAI_API_KEY and contexts:
         try:
             from openai import OpenAI
             client = OpenAI()
-            context_str = "\n\n".join(contexts)
-            resp = client.chat.completions.create(model="gpt-4o-mini", messages=[
-                {"role": "system", "content": "Trả lời CHỈ dựa trên context. Nếu không có → nói 'Không tìm thấy.'"},
-                {"role": "user", "content": f"Context:\n{context_str}\n\nCâu hỏi: {query}"},
-            ])
+            context_str = "\n\n---\n\n".join(contexts)
+            resp = client.chat.completions.create(
+                model="gpt-4o-mini",
+                temperature=0,
+                messages=[
+                    {"role": "system", "content": (
+                        "Bạn là trợ lý chính sách nội bộ. CHỈ trả lời dựa trên Context bên dưới. "
+                        "Trích đúng số liệu/điều khoản, KHÔNG dùng kiến thức ngoài Context. "
+                        "Nếu Context không có thông tin → trả lời đúng 'Không tìm thấy.'. "
+                        "Trả lời ngắn gọn, rõ ràng bằng tiếng Việt."
+                    )},
+                    {"role": "user", "content": f"Context:\n{context_str}\n\nCâu hỏi: {query}"},
+                ],
+            )
             answer = resp.choices[0].message.content
         except Exception as e:
             print(f"  ⚠️  LLM generation failed: {e}", flush=True)
